@@ -1,0 +1,4 @@
+name,round,pose1,pose2,mutant,pred
+WT,0,95,5,NA,NA
+K482P,1,22,78,K482P,full-Q8IT70_HYDVU.MODEL.logits.indices_472_482
+G472V_K482P,2,5,95,G472V,full-Q8IT70_HYDVU_K482P.MODEL.logits.indices_472

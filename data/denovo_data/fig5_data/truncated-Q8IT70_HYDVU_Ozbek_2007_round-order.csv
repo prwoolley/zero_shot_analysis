@@ -1,0 +1,4 @@
+name,round,pose1,pose2,mutant,pred
+WT,0,95,5,NA,NA
+K21P,1,22,78,K21P,truncated-Q8IT70_HYDVU.ESM3_sm_open_v0.both.logits.indices_11_21
+G11V_K21P,2,5,95,G11V,truncated-Q8IT70_HYDVU_K21P.ESM3_sm_open_v0.both.logits.indices_11

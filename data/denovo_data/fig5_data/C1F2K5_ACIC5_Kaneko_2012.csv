@@ -1,0 +1,4 @@
+mutant,MeGlcA-β-1-6-Gal2_specificity-shift,PNP-β-GlcA_specificity-shift,PNP-β-Glc_specificity-shift,PNP-β-Xyl_specificity-shift
+WT,1,1,1,1
+Y334F,NA,0.0052,567,72
+E45D,43,NA,NA,NA
