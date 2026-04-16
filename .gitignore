@@ -1,6 +1,8 @@
 /data/boltz
 /data/fireprotdb_data
 /data/proteingym_data
+/data/lysozyme
 /bash_scripts
 /outputs/logits
 /outputs/foldseek
+.venv/

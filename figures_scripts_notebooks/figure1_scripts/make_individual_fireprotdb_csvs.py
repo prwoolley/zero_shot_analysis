@@ -3,7 +3,7 @@ import pandas as pd
 
 FIREPROTCSVPATH='../../data/fireprotdb_data/fireprot_csvs/fireprotdb_20251015-164116.csv'
 OUTPUTCSVDIR='../../data/fireprotdb_data/fireprot_csvs/individuals'
-MINMUT=20 # minimum number of mutations to save an individual CSV, since many FireprotDB datasets are <10muts
+MINMUT=15 # minimum number of mutations to save an individual CSV for Figure 1A
 
 ### Tidying FireProt CSVs
 def make_csv(group,outdir,min_mutants=1):

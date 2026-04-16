@@ -1,0 +1,9 @@
+A0A2Z5U3Z0_9INFA, A0A2Z5U3Z0_9INFA_Doud_2016.csv:10715, A0A2Z5U3Z0_9INFA_Wu_2014.csv:2350, intersection:2350
+BLAT_ECOLX, BLAT_ECOLX_Deng_2012.csv:4996, BLAT_ECOLX_Firnberg_2014.csv:4783, BLAT_ECOLX_Jacquier_2013.csv:989, BLAT_ECOLX_Stiffler_2015.csv:4996, intersection:988
+DYR_ECOLI, DYR_ECOLI_Nguyen_2023.csv:2916, DYR_ECOLI_Thompson_2019.csv:2363, intersection:2361
+F7YBW8_MESOW, F7YBW8_MESOW_Ding_2023.csv:80, F7YBW8_MESOW_Aakre_2015.csv:37, intersection:0
+HSP82_YEAST, HSP82_YEAST_Cote-Hammarlof_2020_growth-H2O2.csv:2252, HSP82_YEAST_Flynn_2019.csv:13294, HSP82_YEAST_Mishra_2016.csv:4323, intersection:0
+P53_HUMAN, P53_HUMAN_Giacomelli_2018_Null_Nutlin.csv:7467, P53_HUMAN_Kotler_2018.csv:1048, intersection:1048
+RL40A_YEAST, RL40A_YEAST_Mavor_2016.csv:1253, RL40A_YEAST_Roscoe_2013.csv:1195, intersection:1138
+SPG1_STRSG, SPG1_STRSG_Olson_2014.csv:1045, SPG1_STRSG_Wu_2016.csv:76, intersection:76
+SRC_HUMAN, SRC_HUMAN_Ahler_2019.csv:3372, SRC_HUMAN_Chakraborty_2023_binding-DAS_25uM.csv:3637, intersection:3361

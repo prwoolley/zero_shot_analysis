@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+import json
 import pickle
 import re
 from typing import Tuple, Any
@@ -200,60 +201,99 @@ class ProteinMutationModel:
 def tidy_interexperimenter_g2_data(g2_df):
     g2_df['group2_str'] = g2_df['group2_str'].str.split(',')
     g2_df = g2_df.explode('group2_str').reset_index(drop=True)
-    all_scores = {v:[] for v in models.values()}
-    all_scores['UniProt_ID'] = []
     pm = ProteinMutationModel(temperature=1.0)
-    # First pass is a lookup for mutations present in all datasets for that UniProt ID
-    mutation_lookup = {}  # { uniprot_id: [mut1, mut2, ...] }
+
+    mutation_sets = {}
+    mutation_lookup = {}
     for uniprot_id, group_df in g2_df.groupby('UniProt_ID'):
+        mutation_sets[uniprot_id] = {}
         positions = []
-        for i,row in group_df.iterrows():
+        for i, row in group_df.iterrows():
             csv = csvdir / row['group2_str'].split(':')[0]
-            csv_positions = pd.read_csv(csv)['mutant']
+            dataset_name = row['group2_str'].split(':')[0]
+            raw = pd.read_csv(csv)
+            csv_positions = raw[~raw['mutant'].str.contains(':')]['mutant'].tolist()
+            mutation_sets[uniprot_id][dataset_name] = csv_positions
             if len(positions) == 0:
                 positions.extend(csv_positions)
             else:
                 positions = [x for x in positions if x in set(csv_positions)]
         mutation_lookup[uniprot_id] = list(set(positions))
-    for k,v in mutation_lookup.items():
-        print(k,len(v))
-    for _,row in g2_df.iterrows():
+        print(uniprot_id, len(mutation_lookup[uniprot_id]))
+
+    with open(outdir / 'figure3_interexperimenter_g2_obs.txt', 'w') as f:
+        for uniprot_id in mutation_sets:
+            parts = [uniprot_id]
+            for dataset_name, muts in mutation_sets[uniprot_id].items():
+                parts.append(f"{dataset_name}:{len(muts)}")
+            parts.append(f"intersection:{len(mutation_lookup[uniprot_id])}")
+            f.write(', '.join(parts) + '\n')
+
+    controlled = {v:[] for v in models.values()}
+    controlled['UniProt_ID'] = []
+    uncontrolled = {v:[] for v in models.values()}
+    uncontrolled['UniProt_ID'] = []
+
+    for _, row in g2_df.iterrows():
         proteinid = row['UniProt_ID']
         csv = csvdir / row['group2_str'].split(':')[0]
-        row_scores = {}  # Temporary store for this protein's scores
-        passed = True
+        controlled_scores = {}
+        uncontrolled_scores = {}
+        passed_controlled = True
+        passed_uncontrolled = True
+
         for pkl in pkls:
+            if pkl.name not in models:
+                continue
+            model = models[pkl.name]
+
             try:
-                if pkl.name not in models:
-                    continue
-                model = models[pkl.name]
                 pm.load_pickle(pkl, protein_id=proteinid)
                 pm.compute_entropy()
                 pm.load_experiment(csv)
                 pm.exp_df = pm.exp_df[pm.exp_df['mutant'].isin(mutation_lookup[proteinid])]
                 pm.build_dataset()
-                row_scores[model] = pm.spearman()  # Stage score, don't append yet
+                controlled_scores[model] = pm.spearman()
             except Exception as err:
-                passed = False
-                print(err)
-                break
-        if passed:  # Only commit scores if ALL models succeeded
-            for model, score in row_scores.items():
-                all_scores[model].append(score)
-            all_scores['UniProt_ID'].append(proteinid)
-    all_scores = pd.DataFrame({k:v for k,v in all_scores.items() if len(v) > 0})
-    all_scores = all_scores.sort_values('ESM3_sm_both', ascending=False).reset_index(drop=True)
-    all_scores.to_csv(outdir / 'figure3_interexperimenter_g2.csv', index=False)
+                passed_controlled = False
+                print(f"Controlled error: {err}")
+
+            try:
+                pm.load_pickle(pkl, protein_id=proteinid)
+                pm.compute_entropy()
+                pm.load_experiment(csv)
+                pm.build_dataset()
+                uncontrolled_scores[model] = pm.spearman()
+            except Exception as err:
+                passed_uncontrolled = False
+                print(f"Uncontrolled error: {err}")
+
+        if passed_controlled:
+            for model, score in controlled_scores.items():
+                controlled[model].append(score)
+            controlled['UniProt_ID'].append(proteinid)
+
+        if passed_uncontrolled:
+            for model, score in uncontrolled_scores.items():
+                uncontrolled[model].append(score)
+            uncontrolled['UniProt_ID'].append(proteinid)
+
+    controlled_df = pd.DataFrame({k:v for k,v in controlled.items() if len(v) > 0})
+    controlled_df = controlled_df.sort_values('ESM3_sm_both', ascending=False).reset_index(drop=True)
+    controlled_df.to_csv(outdir / 'figure3_interexperimenter_g2.csv', index=False)
+
+    uncontrolled_df = pd.DataFrame({k:v for k,v in uncontrolled.items() if len(v) > 0})
+    uncontrolled_df = uncontrolled_df.sort_values('ESM3_sm_both', ascending=False).reset_index(drop=True)
+    uncontrolled_df.to_csv(outdir / 'figure3_interexperimenter_g2_uncontrolled.csv', index=False)
     return
 
 
-
 def tidy_interphenotype_g1_data(g1_df):
-    def linear_regression(x,y):
-        m, b = np.polyfit(x, y, 1) # Pearson (linear fit)
+    def linear_regression(x, y):
+        m, b = np.polyfit(x, y, 1)
         y_pred = m * x + b
         pearson_r2 = r2_score(y, y_pred)
-        spearman_rho, _ = spearmanr(x, y) # Spearman
+        spearman_rho, _ = spearmanr(x, y)
         spearman_r2 = spearman_rho**2
         return pearson_r2, spearman_rho, spearman_r2, y_pred
 
@@ -262,31 +302,43 @@ def tidy_interphenotype_g1_data(g1_df):
     g1_df_copy = g1_df.copy()
     g1_df_copy['group1_str'] = g1_df_copy['group1_str'].str.split(',')
     g1_df_copy = g1_df_copy.explode('group1_str').reset_index(drop=True)
-    # First pass is a lookup for mutations present in all datasets for that UniProt ID
-    mutation_lookup = {}  # { uniprot_id: [mut1, mut2, ...] }
+
+    mutation_lookup = {}
+    mutation_sets = {}
     for uniprot_id, group_df in g1_df_copy.groupby('UniProt_ID'):
         positions = []
-        for i,row in group_df.iterrows():
+        mutation_sets[uniprot_id] = {}
+        for i, row in group_df.iterrows():
             csv = csvdir / row['group1_str'].split(':')[0]
-            csv_positions = pd.read_csv(csv)['mutant']
+            dataset_name = row['group1_str'].split(':')[0]
+            raw = pd.read_csv(csv)
+            csv_positions = raw[~raw['mutant'].str.contains(':')]['mutant'].tolist()
+            mutation_sets[uniprot_id][dataset_name] = csv_positions
             if len(positions) == 0:
                 positions.extend(csv_positions)
             else:
                 positions = [x for x in positions if x in set(csv_positions)]
         mutation_lookup[uniprot_id] = list(set(positions))
-    for k,v in mutation_lookup.items():
-        print(k,len(v))
+        print(uniprot_id, len(mutation_lookup[uniprot_id]))
 
-    all_scores = {'proteinid':[],'model':[],'expression_rs':[],'selection_rs':[],'selection_name':[]}
-    all_protein_data = {'proteinid':[],'variable_rs':[]}
+    with open(outdir / 'figure3_interphenotype_g1_obs.txt', 'w') as f:
+        for uniprot_id in mutation_sets:
+            parts = [uniprot_id]
+            for dataset_name, muts in mutation_sets[uniprot_id].items():
+                parts.append(f"{dataset_name}:{len(muts)}")
+            parts.append(f"intersection:{len(mutation_lookup[uniprot_id])}")
+            f.write(', '.join(parts) + '\n')
+
+    controlled = {'proteinid': [], 'model': [], 'expression_rs': [], 'selection_rs': [], 'selection_name': []}
+    uncontrolled = {'proteinid': [], 'model': [], 'expression_rs': [], 'selection_rs': [], 'selection_name': []}
+    all_protein_data = {'proteinid': [], 'variable_rs': []}
+
     for _, row in g1_df.iterrows():
         proteinid = row['UniProt_ID']
-        # # Optionally, drop SARS2 which is a virus and not represented in all models' training data.
-        # if proteinid == 'SPIKE_SARS2':
-        #     continue
         exps = row['group1_str'].split(',')
         selections = []
         protein_data = []
+
         for exp in exps:
             selection = exp.split(':')[1]
             selections.append(selection)
@@ -294,31 +346,45 @@ def tidy_interphenotype_g1_data(g1_df):
             exp_data = pd.read_csv(csv)[['mutant', 'DMS_score']]
             exp_data = exp_data.rename(columns={'DMS_score': selection})
             protein_data.append(exp_data)
+
             for pkl in pkls:
+                if pkl.name not in models:
+                    continue
+                model = models[pkl.name]
+
                 try:
-                    if pkl.name not in models:
-                        continue
-                    model = models[pkl.name]
-                    pm.load_pickle(pkl,protein_id=proteinid)
+                    pm.load_pickle(pkl, protein_id=proteinid)
                     pm.compute_entropy()
                     pm.load_experiment(csv)
                     pm.exp_df = pm.exp_df[pm.exp_df['mutant'].isin(mutation_lookup[proteinid])]
                     pm.build_dataset()
                     if selection == 'Abundance':
-                        expression_rs = pm.spearman()
-                        all_scores['expression_rs'].append(expression_rs)
+                        controlled['expression_rs'].append(pm.spearman())
                     else:
-                        selection_rs = pm.spearman()
-                        selection_name = selection
-                        all_scores['selection_rs'].append(selection_rs)
-                        all_scores['selection_name'].append(selection_name)
-                        all_scores['proteinid'].append(proteinid)
-                        all_scores['model'].append(model)
+                        controlled['selection_rs'].append(pm.spearman())
+                        controlled['selection_name'].append(selection)
+                        controlled['proteinid'].append(proteinid)
+                        controlled['model'].append(model)
                 except Exception as err:
-                    print(err)
-                    break
-        protein_data = reduce(lambda left, right: pd.merge(left, right, on='mutant', how='inner'),protein_data)
-        a,b = selections
+                    print(f"Controlled error: {err}")
+
+                try:
+                    pm.load_pickle(pkl, protein_id=proteinid)
+                    pm.compute_entropy()
+                    pm.load_experiment(csv)
+                    pm.build_dataset()
+                    if selection == 'Abundance':
+                        uncontrolled['expression_rs'].append(pm.spearman())
+                    else:
+                        uncontrolled['selection_rs'].append(pm.spearman())
+                        uncontrolled['selection_name'].append(selection)
+                        uncontrolled['proteinid'].append(proteinid)
+                        uncontrolled['model'].append(model)
+                except Exception as err:
+                    print(f"Uncontrolled error: {err}")
+
+        protein_data = reduce(lambda left, right: pd.merge(left, right, on='mutant', how='inner'), protein_data)
+        a, b = selections
         if b == "Abundance":
             y = protein_data[a]
             x = protein_data[b]
@@ -326,19 +392,24 @@ def tidy_interphenotype_g1_data(g1_df):
             x = protein_data[a]
             y = protein_data[b]
         try:
-            _, spearman_rho, _, _ = linear_regression(x,y)
+            _, spearman_rho, _, _ = linear_regression(x, y)
             all_protein_data['proteinid'].append(proteinid)
             all_protein_data['variable_rs'].append(spearman_rho)
         except:
             print(selections)
-            break
-    all_scores = pd.DataFrame(all_scores)
+
     all_protein_data = pd.DataFrame(all_protein_data)
-    all_scores = pd.merge(all_scores,all_protein_data,how='left')
-    all_scores.to_csv(outdir / 'figure3_interphenotype_g1.csv',index=False)
+
+    controlled_df = pd.DataFrame(controlled)
+    controlled_df = pd.merge(controlled_df, all_protein_data, how='left')
+    controlled_df.to_csv(outdir / 'figure3_interphenotype_g1.csv', index=False)
+
+    uncontrolled_df = pd.DataFrame(uncontrolled)
+    uncontrolled_df = pd.merge(uncontrolled_df, all_protein_data, how='left')
+    uncontrolled_df.to_csv(outdir / 'figure3_interphenotype_g1_uncontrolled.csv', index=False)
     return
 
 
 # interexperimenter_g2_df = interexperimenter_g2_df[interexperimenter_g2_df['UniProt_ID']!='SPG1_STRSG'] # manually dropping this row because its slow:
-# tidy_interexperimenter_g2_data(interexperimenter_g2_df)
+tidy_interexperimenter_g2_data(interexperimenter_g2_df)
 tidy_interphenotype_g1_data(interphenotype_g1_df)

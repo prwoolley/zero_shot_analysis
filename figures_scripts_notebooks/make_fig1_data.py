@@ -282,43 +282,64 @@ def tidy_figure_1_data():
          }
     
     ### Tidying FireProt CSVs
-    def make_csv(group,csv_dir='/home/pwoolley/work/proteingym/fireprot_csvs/individuals',min_mutants=1):
+    def make_csv(group, csv_dir='/home/pwoolley/work/proteingym/fireprot_csvs/individuals', min_mutants=1):
         group = group.copy()
-        if group['DDG'].isna().all():
-            group = group.rename(columns={
-                'SUBSTITUTION': 'mutant',
-                'DTM': 'DMS_score'
-            })
-        else:
-            group = group.rename(columns={
-                'SUBSTITUTION': 'mutant',
-                'DDG': 'DMS_score'
-            })
-            group['DMS_score'] = -1 * group['DMS_score']
-        name = group['UNIPROTKB'].iloc[0].split(',')[0]
+        group = group.rename(columns={'SUBSTITUTION': 'mutant'})
+        
+        # Ensure numeric types
+        group['DDG'] = pd.to_numeric(group['DDG'], errors='coerce')
+        group['DTM'] = pd.to_numeric(group['DTM'], errors='coerce')
+        
+        # Row-wise logic: prioritize -DDG, fallback to DTM
+        group['DMS_score'] = (-1 * group['DDG']).fillna(group['DTM'])
+        
+        # Drop rows that still have no score
         group = group.dropna(subset=['DMS_score'])
-        group['DMS_score'] = pd.to_numeric(group['DMS_score'], errors='coerce')
+        
+        if group.empty:
+            return
+            
+        name = str(group['UNIPROTKB'].iloc[0]).split(',')[0]
+        
         group = (
             group
             .groupby('mutant', as_index=False)['DMS_score']
             .mean()
         )
+        
         if group['mutant'].nunique() < min_mutants:
             return
+            
         group.to_csv(
             os.path.join(csv_dir, f'{name}.csv'),
             index=False
         )
 
     df = pd.read_csv('../data/fireprot_data/fireprot_csvs/fireprotdb_20251015-164116.csv')
-    df = df.dropna(subset=['SUBSTITUTION','UNIPROTKB'],axis=0).dropna(subset=['DDG', 'DTM'], how='all',axis=0)
+    # df = df.dropna(subset=['SUBSTITUTION','UNIPROTKB'],axis=0).dropna(subset=['DDG', 'DTM'], how='all',axis=0)
     df = df[df['SUBSTITUTION'].str.split(',').str.len() == 1]
     df = df[['UNIPROTKB','SUBSTITUTION','DDG','DTM']]
     for _, group in df.groupby('UNIPROTKB'):
-        make_csv(group,min_mutants=5)
+        make_csv(group, min_mutants=20)
 
     pkl_dir = '/home/pwoolley/work/proteingym/outputs/logits/fireprotdb'
     pkls = [os.path.join(pkl_dir,x) for x in os.listdir(pkl_dir) if x.endswith('.pkl')]
+
+    def filter_fireprot_csvs_by_min_mutants(csv_dir, min_mutants=20):
+        filtered = []
+        for filename in os.listdir(csv_dir):
+            if not filename.endswith('.csv'):
+                continue
+            csv_path = os.path.join(csv_dir, filename)
+            try:
+                tmp = pd.read_csv(csv_path)
+            except Exception:
+                continue
+            if 'mutant' not in tmp.columns:
+                continue
+            if tmp['mutant'].nunique() >= min_mutants:
+                filtered.append(csv_path)
+        return filtered
 
 
     def evaluate_models(model_pkls, csv_files, pkl_dir, database = 'fireprotdb', temperature=1.0):
@@ -351,7 +372,7 @@ def tidy_figure_1_data():
 
     # # Fireprot
     csv_dir = '/home/pwoolley/work/proteingym/fireprot_csvs/individuals'
-    csvs = [os.path.join(csv_dir,x) for x in os.listdir(csv_dir)]
+    csvs = filter_fireprot_csvs_by_min_mutants(csv_dir, min_mutants=20)
     df = evaluate_models(models_fp,csvs,'/home/pwoolley/work/proteingym/outputs/logits/fireprotdb')
     df.to_csv('../outputs/csvs/fpdb_comparison_plot.csv',index=False)
 
@@ -361,21 +382,3 @@ def tidy_figure_1_data():
     df = evaluate_models(models_pg,csvs,'/home/pwoolley/work/proteingym/outputs/logits/proteingym',database='proteingym')
     df.to_csv('../outputs/csvs/pg_comparison_plot.csv',index=False)
     return
-
-
-
-
-def tidy_figure_2_data():
-    
-    return
-
-def tidy_figure_3_data():
-    return
-
-def tidy_figure_4_data():
-    return
-
-def tidy_figure_5_data():
-    return
-
-
