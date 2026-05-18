@@ -1,22 +1,22 @@
 Protein Name,UniProt ID,Category,Mut. overlap,Mutations,Citation
-Beta-lactamase TEM,BLAT_ECOLX,inter-experimenter,988,"989, 4783, 4996, 4996","BLAT_ECOLX_Deng_2012, BLAT_ECOLX_Firnberg_2014, BLAT_ECOLX_Jacquier_2013, BLAT_ECOLX_Stiffler_2015"
-Dihydrofolate reductase,DYR_ECOLI,inter-experimenter,2361,"2363, 2916","DYR_ECOLI_Nguyen_2023, DYR_ECOLI_Thompson_2019"
-Hemagglutinin,A0A2Z5U3Z0_9INFA,inter-experimenter,2350,"2350, 10705","A0A2Z5U3Z0_9INFA_Doud_2016, A0A2Z5U3Z0_9INFA_Wu_2014"
-HSP82,HSP82_YEAST,inter-experimenter,0,"2252, 4323, 13294","HSP82_YEAST_Cote-Hammarlof_2020_growth-H2O2, HSP82_YEAST_Flynn_2019, HSP82_YEAST_Mishra_2016"
-Ig G-binding protein G,SPG1_STRSG,inter-experimenter,76,"76, 1045","SPG1_STRSG_Olson_2014, SPG1_STRSG_Wu_2016"
-p53,P53_HUMAN,inter-experimenter,1048,"1048, 7467","P53_HUMAN_Giacomelli_2018, P53_HUMAN_Kotler_2018"
-ParD antitoxin,F7YBW8_MESOW,inter-experimenter,0,"37, 80","F7YBW8_MESOW_Aakre_2015, F7YBW8_MESOW_Ding_2023"
-Src tyrosine-protein kinase,SRC_HUMAN,inter-experimenter,3361,"3372, 3637","SRC_HUMAN_Ahler_2019, SRC_HUMAN_Chakraborty_2023"
-Ubiquitin-ribosomal protein,RL40A_YEAST,inter-experimenter,1138,"1195, 1253","RL40A_YEAST_Mavor_2016, RL40A_YEAST_Roscoe_2013"
-Cytochrome P450,CP2C9_HUMAN,inter-phenotype,4421,"6142, 6370",CP2C9_HUMAN
-D-amino-acid oxidase,OXDA_RHOTO,inter-phenotype,6387,"6396, 6769",OXDA_RHOTO_Vanella_2023
-HLA antigen,Q53Z42_HUMAN,inter-phenotype,3344,"3344, 3344",Q53Z42_HUMAN_McShan_2019
-Potassium channel E1,KCNE1_HUMAN,inter-phenotype,2312,"2315, 2339",KCNE1_HUMAN_Muhammad_2023
-Potassium channel J1,KCNJ2_MOUSE,inter-phenotype,6789,"6917, 6963",KCNJ2_MOUSE_Coyote-Maestas
-Solute carrier 22A1,S22A1_HUMAN,inter-phenotype,9715,"9803, 10094",S22A1_HUMAN_Yee_2024
-Spike glycoprotein,SPIKE_SARS2,inter-phenotype,3797,"3798, 3802",SPIKE_SARS2_Starr_2020
-Vitamin K epoxide reductase complex subunit 1,VKOR1_HUMAN,inter-phenotype,692,"697, 2695",VKOR1_HUMAN_Chiasson_2020
-Beta-glucuronidase,C1F2K5_ACIC5,new-to-nature,-,2,ntn-kaneko2012C1F2K5
-Cytochrome P450,CPXB_PRIM2,new-to-nature,-,"5, 12","ntn-arnold2012,ntn-arnold2014"
-Hydra minicollagen,Q8IT70_HYDVU,new-to-nature,-,2,ntn-ozbek2007
-Phosphotriesterase,OPD_BREDI,new-to-nature,-,12,ntn-round-tawfik2012
+Beta-lactamase TEM,BLAT_ECOLX,inter-experimenter,988,"989, 4783, 4996, 4996","Deng, et al., Firnberg, et al., Jacquier, et al., Stiffler, et al."
+Dihydrofolate reductase,DYR_ECOLI,inter-experimenter,2361,"2363, 2916","Nguyen, et al., Thompson, et al."
+Hemagglutinin,A0A2Z5U3Z0_9INFA,inter-experimenter,2350,"2350, 10705","Doud, et al., Wu, et al."
+HSP82,HSP82_YEAST,inter-experimenter,0,"2252, 4323, 13294","Cote-Hammarlof, et al., Flynn, et al., Mishra, et al."
+Ig G-binding protein G,SPG1_STRSG,inter-experimenter,76,"76, 1045","Olson, et al., Wu, et al."
+p53,P53_HUMAN,inter-experimenter,1048,"1048, 7467","Giacomelli, et al., Kotler, et al."
+ParD antitoxin,F7YBW8_MESOW,inter-experimenter,0,"37, 80","Aakre, et al., Ding, et al."
+Src tyrosine-protein kinase,SRC_HUMAN,inter-experimenter,3361,"3372, 3637","Ahler, et al., Chakraborty, et al."
+Ubiquitin-ribosomal protein,RL40A_YEAST,inter-experimenter,1138,"1195, 1253","Mavor, et al., Roscoe, et al."
+Cytochrome P450,CP2C9_HUMAN,inter-phenotype,4421,"6142, 6370","Amorosi, et al."
+D-amino-acid oxidase,OXDA_RHOTO,inter-phenotype,6387,"6396, 6769","Vanella, et al."
+HLA antigen,Q53Z42_HUMAN,inter-phenotype,3344,"3344, 3344","McShan, et al."
+Potassium channel E1,KCNE1_HUMAN,inter-phenotype,2312,"2315, 2339","Muhammad, et al."
+Potassium channel J1,KCNJ2_MOUSE,inter-phenotype,6789,"6917, 6963","Coyote-Maestas, et al."
+Solute carrier 22A1,S22A1_HUMAN,inter-phenotype,9715,"9803, 10094","Yee, et al."
+Spike glycoprotein,SPIKE_SARS2,inter-phenotype,3797,"3798, 3802","Starr, et al."
+Vitamin K epoxide reductase complex subunit 1,VKOR1_HUMAN,inter-phenotype,692,"697, 2695","Chiasson, et al."
+Beta-glucuronidase,C1F2K5_ACIC5,new-to-nature,-,2,"Michikawa, et al."
+Cytochrome P450,CPXB_PRIM2,new-to-nature,-,"5, 12","Coelho, et al., Wang, et al."
+Hydra minicollagen,Q8IT70_HYDVU,new-to-nature,-,2,"Meier, et al."
+Phosphotriesterase,OPD_BREDI,new-to-nature,-,12,"Tokuriki, et al."
