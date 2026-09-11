@@ -63,6 +63,7 @@ def load_assay(logits, path):
     data["top_one_percent"] = data["DMS_score"].ge(data["DMS_score"].quantile(0.99))
     data["top_ten_percent"] = data["DMS_score"].ge(data["DMS_score"].quantile(0.90))
     data["experimentally_fit"] = data["DMS_score_bin"].eq(1)
+    data["experimentally_unfit"] = data["DMS_score_bin"].eq(0)
     data["fitness_class"] = "beneficial"
     data.loc[data["DMS_score"].lt(0), "fitness_class"] = "worse_than_wt"
     data.loc[data["top_ten_percent"], "fitness_class"] = "top_ten_percent"
@@ -87,6 +88,7 @@ def measure(data, assay):
     for budget in BUDGETS:
         screened = ranked.head(min(budget, len(ranked)))
         metrics[f"fit_recall_at_{budget}"] = screened["experimentally_fit"].sum() / data["experimentally_fit"].sum()
+        metrics[f"unfit_recall_at_{budget}"] = screened["experimentally_unfit"].sum() / data["experimentally_unfit"].sum()
         metrics[f"top_one_percent_recall_at_{budget}"] = screened["top_one_percent"].sum() / data["top_one_percent"].sum()
         metrics[f"top_ten_percent_recall_at_{budget}"] = screened["top_ten_percent"].sum() / data["top_ten_percent"].sum()
         metrics[f"best_recall_at_{budget}"] = screened["DMS_score"].eq(best_score).sum() / data["DMS_score"].eq(best_score).sum()
@@ -127,20 +129,24 @@ def example_panel(axis, data, model):
 
 
 def enrichment_panel(axis, metrics, model):
-    experimentally_fit, top_one_percent, top_ten_percent = [], [], []
-    experimentally_fit_se, top_one_percent_se, top_ten_percent_se = [], [], []
+    experimentally_unfit, experimentally_fit, top_one_percent, top_ten_percent = [], [], [], []
+    experimentally_unfit_se, experimentally_fit_se, top_one_percent_se, top_ten_percent_se = [], [], [], []
     for budget in LOG_PLOT_BUDGETS:
         random_recall = np.minimum(budget / metrics["n_assayed"], 1)
+        unfit_lift = metrics[f"unfit_recall_at_{budget}"] / random_recall
         fit_lift = metrics[f"fit_recall_at_{budget}"] / random_recall
         top_one_percent_lift = metrics[f"top_one_percent_recall_at_{budget}"] / random_recall
         top_ten_percent_lift = metrics[f"top_ten_percent_recall_at_{budget}"] / random_recall
+        experimentally_unfit.append(unfit_lift.mean())
         experimentally_fit.append(fit_lift.mean())
         top_one_percent.append(top_one_percent_lift.mean())
         top_ten_percent.append(top_ten_percent_lift.mean())
+        experimentally_unfit_se.append(standard_error(unfit_lift))
         experimentally_fit_se.append(standard_error(fit_lift))
         top_one_percent_se.append(standard_error(top_one_percent_lift))
         top_ten_percent_se.append(standard_error(top_ten_percent_lift))
     axis.axhline(1, color="#666666", linestyle=":", linewidth=1.5, label="Random ranking")
+    axis.errorbar(LOG_PLOT_BUDGETS, experimentally_unfit, yerr=experimentally_unfit_se, marker="o", markersize=4, capsize=2, color="#9A9A9A", label="Experimentally unfit variants")
     axis.errorbar(LOG_PLOT_BUDGETS, experimentally_fit, yerr=experimentally_fit_se, marker="o", markersize=4, capsize=2, color="#A367C6", label="Experimentally fit variants")
     axis.errorbar(LOG_PLOT_BUDGETS, top_ten_percent, yerr=top_ten_percent_se, marker="o", markersize=4, capsize=2, color="#4C9DAF", label="Top-10% variants")
     axis.errorbar(LOG_PLOT_BUDGETS, top_one_percent, yerr=top_one_percent_se, marker="o", markersize=4, capsize=2, color="#E2BB50", label="Top-1% variants")
@@ -152,7 +158,7 @@ def enrichment_panel(axis, metrics, model):
     axis.set_yticks([0.5, 1, 2, 3, 4])
     axis.set_yticklabels(["0.5", "1", "2", "3", "4"])
     axis.yaxis.set_minor_formatter(NullFormatter())
-    axis.set_ylim(bottom=0.7)
+    axis.set_ylim(bottom=0.4)
     axis.set(xlabel="Experimental screening budget", ylabel="Recall enrichment over random (fold)")
     axis.tick_params(labelsize=9)
     handles, labels = axis.get_legend_handles_labels()
