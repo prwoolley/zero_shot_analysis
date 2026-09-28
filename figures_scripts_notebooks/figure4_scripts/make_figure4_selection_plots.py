@@ -29,6 +29,7 @@ MUTATION = re.compile(r"^([A-Za-z])(\d+)([A-Za-z])$")
 RNG = np.random.default_rng(20260909)
 BUDGETS = [1, 5, 8, 10, 16, 25, 32, 50, 64, 100, 128, 250, 256, 500]
 LOG_PLOT_BUDGETS = [8, 16, 32, 64, 128, 256]
+PANEL_C_BUDGETS = [8, 16, 32, 64, 128, 256]
 ACTIVITY_ASSAYS = set(pd.read_csv(METADATA_PATH).query("coarse_selection_type == 'Activity'")["DMS_filename"])
 
 
@@ -92,7 +93,7 @@ def measure(data, assay):
         metrics[f"top_one_percent_recall_at_{budget}"] = screened["top_one_percent"].sum() / data["top_one_percent"].sum()
         metrics[f"top_ten_percent_recall_at_{budget}"] = screened["top_ten_percent"].sum() / data["top_ten_percent"].sum()
         metrics[f"best_recall_at_{budget}"] = screened["DMS_score"].eq(best_score).sum() / data["DMS_score"].eq(best_score).sum()
-    for budget in [8]:
+    for budget in PANEL_C_BUDGETS:
         screened_budget = min(budget, len(data))
         for target, column in [("top_one_percent", "top_one_percent"), ("top_ten_percent", "top_ten_percent"), ("best", "DMS_score")]:
             target_count = data[column].eq(best_score).sum() if target == "best" else data[column].sum()
@@ -112,6 +113,33 @@ def mean_interval(values):
 def standard_error(values):
     values = np.asarray(values, dtype=float)
     return values.std(ddof=1) / np.sqrt(len(values))
+
+
+def write_panel_c_summary(metrics_by_model):
+    targets = [
+        ("best", "Exact experimental best variant"),
+        ("top_one_percent", "At least one top-1% variant"),
+        ("top_ten_percent", "At least one top-10% variant"),
+    ]
+    rows = []
+    for budget in PANEL_C_BUDGETS:
+        for target, label in targets:
+            row = {"Budget": budget, "Target category": label}
+            for model, metrics in metrics_by_model.items():
+                values = 100 * metrics[f"{target}_hit_at_{budget}"]
+                row[f"{model} ranking (%)"] = f"{values.mean():.1f} +/- {standard_error(values):.1f}"
+            random_values = 100 * metrics_by_model["ESM3-hybrid"][f"random_{target}_hit_at_{budget}"]
+            row["Random ranking (%)"] = f"{random_values.mean():.1f} +/- {standard_error(random_values):.1f}"
+            rows.append(row)
+    columns = [
+        "Budget",
+        "Target category",
+        "Random ranking (%)",
+        "ESM3-hybrid ranking (%)",
+        "ESMC-600M ranking (%)",
+        "ProteinMPNN ranking (%)",
+    ]
+    pd.DataFrame(rows)[columns].to_csv(OUTPUT_DIR / "figure4_panel_c_recovery_summary.csv", index=False)
 
 
 def example_panel(axis, data, model):
@@ -177,10 +205,12 @@ def fixed_budget_panel(axis, metrics, model, budget=8):
     error_style = {"ecolor": "#222222", "capsize": 2, "elinewidth": .8}
     axis.barh(y_position - height / 2, random_hits, height, xerr=random_se, error_kw=error_style, color="#9A9A9A", label="Random ranking")
     axis.barh(y_position + height / 2, model_hits, height, xerr=model_se, error_kw=error_style, color="#E2BB50", label="Model ranking")
-    for position, value, error in zip(y_position - height / 2, random_hits, random_se):
-        axis.text(value + error + 2.0, position, f"{value:.1f}%", va="center", fontsize=8)
-    for position, value, error in zip(y_position + height / 2, model_hits, model_se):
-        axis.text(value + error + 2.0, position, f"{value:.1f}%", va="center", fontsize=8)
+    for index, (position, value, error) in enumerate(zip(y_position - height / 2, random_hits, random_se)):
+        label_position = value - error - 2.0 if index == 2 else value + error + 2.0
+        axis.text(label_position, position, f"{value:.1f}%", va="center", ha="right" if index == 2 else "left", fontsize=8)
+    for index, (position, value, error) in enumerate(zip(y_position + height / 2, model_hits, model_se)):
+        label_position = value - error - 2.0 if index == 2 else value + error + 2.0
+        axis.text(label_position, position, f"{value:.1f}%", va="center", ha="right" if index == 2 else "left", fontsize=8)
     axis.set(xlim=(0, 100), xlabel="ProteinGym assays (%)", ylabel="")
     axis.set_yticks(y_position, labels)
     axis.invert_yaxis()
@@ -191,6 +221,7 @@ def fixed_budget_panel(axis, metrics, model, budget=8):
 def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+    metrics_by_model = {}
     for model, (filename, slug) in MODELS.items():
         with open(LOGIT_DIR / filename, "rb") as handle:
             logits = pickle.load(handle)
@@ -213,13 +244,17 @@ def main():
         if example is None or metrics.empty:
             raise RuntimeError(f"Missing data for {model}")
         metrics.to_csv(OUTPUT_DIR / f"figure4_selection_{slug}.csv", index=False)
-        figure, axes = plt.subplots(1, 3, figsize=(14, 4.4))
-        example_panel(axes[0], example, model)
-        enrichment_panel(axes[1], metrics, model)
-        fixed_budget_panel(axes[2], metrics, model)
-        figure.tight_layout()
-        figure.savefig(IMAGE_DIR / f"fitness_selection_{slug}.png", dpi=300, bbox_inches="tight")
-        plt.close(figure)
+        metrics_by_model[model] = metrics
+        for budget in PANEL_C_BUDGETS:
+            figure, axes = plt.subplots(1, 3, figsize=(14, 4.4))
+            example_panel(axes[0], example, model)
+            enrichment_panel(axes[1], metrics, model)
+            fixed_budget_panel(axes[2], metrics, model, budget=budget)
+            figure.tight_layout()
+            suffix = "" if budget == 8 else f"_budget{budget}"
+            figure.savefig(IMAGE_DIR / f"fitness_selection_{slug}{suffix}.png", dpi=300, bbox_inches="tight")
+            plt.close(figure)
+    write_panel_c_summary(metrics_by_model)
 
 
 if __name__ == "__main__":
